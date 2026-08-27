@@ -1,3 +1,15 @@
-node_modules
+# Node dependencies
+node_modules/
+dist/
+
+# Python virtual environments
+.venv/
+__pycache__/
+*.pyc
+
+# Environment files
 .env
-python venvs
+.env.local
+
+# Operating system files
+.DS_Store
