@@ -8,6 +8,7 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
+const PYTHON_AI_URL = process.env.PYTHON_AI_URL || "http://127.0.0";
 
 app.get("/api/health", (req: Request, res: Response) => {
   res.json({ status: "healthy", service: "node-ingestion-api" });
@@ -30,15 +31,38 @@ app.post("/api/logs", async (req: Request, res: Response): Promise<void> => {
   }
 
   try {
+    let vectorEmbedding: number[] | null = null;
+
+    try {
+      const aiResponse = await fetch(PYTHON_AI_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: requestObj.raw_message }),
+      });
+
+      if (aiResponse.ok) {
+        const aiData = (await aiResponse.json()) as { embedding: number[] };
+        vectorEmbedding = aiData.embedding;
+      }
+    } catch (aiErr) {
+      console.warn(
+        "⚠️ AI Vector Engine unreachable, inserting raw log without vector mapping.",
+      );
+    }
     const queryText = `
-    INSERT INTO production_logs (timestamp, service_name, log_level, raw_message, metadata)
-      VALUES ($1, $2, $3, $4, $5) RETURNING id;`;
+    INSERT INTO production_logs (timestamp, service_name, log_level, raw_message, message_embedding,metadata)
+      VALUES ($1, $2, $3, $4, $5, $6) RETURNING id;`;
+
+    const vectorValueString = vectorEmbedding
+      ? `[${vectorEmbedding.join(",")}]`
+      : null;
 
     const values = [
       requestObj.timestamp || new Date().toISOString(),
       requestObj.service_name,
       requestObj.log_level.toUpperCase(),
       requestObj.raw_message,
+      vectorValueString,
       JSON.stringify(requestObj.metadata || {}),
     ];
 
@@ -47,10 +71,11 @@ app.post("/api/logs", async (req: Request, res: Response): Promise<void> => {
     res.status(201).json({
       success: true,
       logId: result.rows[0].id,
+      vectorized: !!vectorEmbedding,
     });
   } catch (err) {
-    console.error("❌ Database insertion error:", err);
-    res.status(500).json({ error: "Internal database write failure" });
+    console.error("❌ Pipeline failure:", err);
+    res.status(500).json({ error: "Database transaction failure" });
   }
 });
 
