@@ -1,8 +1,11 @@
 from fastapi import FastAPI,HTTPException
 from pydantic import BaseModel
 from sentence_transformers import SentenceTransformer
+from app import agent
 
 app = FastAPI(title="AI Incident Vector Service")
+
+app.include_router(agent.router)
 
 print("🧠 Loading local SentenceTransformer model into system memory...")
 
