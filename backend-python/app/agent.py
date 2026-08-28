@@ -37,10 +37,7 @@ def run_autonomous_investigation(payload:InvestigationRequest):
         response = requests.post(OLLAMA_CHAT_URL,json=ollama_payload,timeout=30).json()
         message_result = response.get("message",{})
 
-        print(message_result)
-
         if "tool_calls" in message_result:
-            print("true")
             tool_steps_summary = []
             for tool_call in message_result["tool_calls"]:
                 function_name = tool_call["function"]["name"]
