@@ -8,7 +8,8 @@ const app = express();
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
-const PYTHON_AI_URL = process.env.PYTHON_AI_URL || "http://127.0.0";
+const PYTHON_AI_URL =
+  process.env.PYTHON_AI_URL || "http://127.0.0.1:8000/api/embed";
 
 app.get("/api/health", (req: Request, res: Response) => {
   res.json({ status: "healthy", service: "node-ingestion-api" });
@@ -77,6 +78,59 @@ app.post("/api/logs", async (req: Request, res: Response): Promise<void> => {
     console.error("❌ Pipeline failure:", err);
     res.status(500).json({ error: "Database transaction failure" });
   }
+});
+
+app.get("/api/mock-github/commits", (req: Request, res: Response) => {
+  const service = req.query.service_name as string;
+  const mockCommits = [
+    {
+      commit_id: "a1b2c3d",
+      author: "senior_dev",
+      message: "Refactored routing authentication checks.",
+    },
+    {
+      commit_id: "f8e9d1c",
+      author: "intern_user",
+      message: "Optimized connection arrays.",
+      service_affected: "PaymentService",
+    },
+    {
+      commit_id: "x9y8z7w",
+      author: "devops_lead",
+      message: "Added strict memory limits to Docker definitions.",
+    },
+  ];
+  if (service) {
+    const filtered = mockCommits.filter((c) => c.service_affected === service);
+    return res.json({ service, history: filtered });
+  }
+  res.json({ history: mockCommits });
+});
+
+app.post("/api/mock-terminal/exec", (req: Request, res: Response) => {
+  const { command } = req.body;
+  if (!command) {
+    return res.status(400).json({ error: "No system command provided." });
+  }
+  const cmdString = command.toLowerCase();
+
+  if (cmdString.includes("free -m") || cmdString.includes("mem")) {
+    return res.json({
+      output:
+        "Mem: Total: 16384MB | Used: 16100MB | Free: 284MB | Buffers/Cached: 1100MB. Warning: Swap allocation active.",
+    });
+  }
+
+  if (cmdString.includes("df -h") || cmdString.includes("disk")) {
+    return res.json({
+      output:
+        "/dev/sda1  Size: 100G | Used: 42G | Avail: 58G | Use%: 42% | Mounted on: /",
+    });
+  }
+
+  res.json({
+    output: `Command '${command}' executed successfully. Exit code: 0. Status: Idle.`,
+  });
 });
 
 app.listen(PORT, () => {
