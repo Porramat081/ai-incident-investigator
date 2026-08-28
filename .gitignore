@@ -13,3 +13,6 @@ __pycache__/
 
 # Operating system files
 .DS_Store
+
+# Script test
+*.ps1
